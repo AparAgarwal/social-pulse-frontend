@@ -1,12 +1,11 @@
 import { createContext, useContext, useState, useEffect, useCallback, type ReactNode } from 'react';
 import type { User } from '../api/types';
-import { tokenManager } from './tokenManager';
 import { getCurrentUser } from '../api/user';
 import { logoutUser } from '../api/auth';
 
 interface AuthContextType {
   user: User | null;
-  login: (userData: User, accessToken: string) => void;
+  login: (userData: User) => void;
   logout: () => void;
   updateUser: (userData: Partial<User>) => void;
   isAuthenticated: boolean;
@@ -37,7 +36,6 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     
     setUser(null);
     localStorage.removeItem('session_user');
-    tokenManager.setAccessToken(null);
     setIsLoading(false);
     
     if (wasLoggedIn) {
@@ -54,22 +52,13 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 
   useEffect(() => {
     const syncSession = async () => {
-      // If we have a user in localStorage, try to proactively refresh 
-      // the access token before syncing their data.
       if (user) {
         try {
-          // Import refreshAccessToken dynamically here or at top
-          const { refreshAccessToken } = await import('../api/auth');
-          const { accessToken } = await refreshAccessToken();
-          tokenManager.setAccessToken(accessToken);
-          
           const freshUser = await getCurrentUser();
           setUser(freshUser);
           localStorage.setItem('session_user', JSON.stringify(freshUser));
         } catch (err) {
           console.error('Initial session sync failed:', err);
-          // If refresh fails, we'll let handleUnauthorized (via fetchApi event)
-          // or this catch block handle the cleanup.
         }
       }
       setIsLoading(false);
@@ -78,10 +67,9 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     syncSession();
   }, []); // Only run on mount
 
-  const login = useCallback((userData: User, accessToken: string) => {
+  const login = useCallback((userData: User) => {
     setUser(userData);
     localStorage.setItem('session_user', JSON.stringify(userData));
-    tokenManager.setAccessToken(accessToken);
   }, []);
 
   const logout = useCallback(async () => {
@@ -92,7 +80,6 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     }
     setUser(null);
     localStorage.removeItem('session_user');
-    tokenManager.setAccessToken(null);
   }, []);
 
   const updateUser = useCallback((userData: Partial<User>) => {

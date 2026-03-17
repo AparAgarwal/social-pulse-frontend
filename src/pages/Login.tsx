@@ -40,8 +40,8 @@ export function LoginPage() {
         password: data.password
       };
 
-      const { user, accessToken } = await loginUser(payload);
-      login(user, accessToken);
+      const { user } = await loginUser(payload);
+      login(user);
       navigate('/');
     } catch (err: unknown) {
       if (err instanceof ApiError) {

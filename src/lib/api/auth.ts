@@ -22,7 +22,7 @@ export const logoutUser = async () => {
 };
 
 export const refreshAccessToken = async () => {
-  return fetchApi<{ accessToken: string }>('auth/refresh', {
+  return fetchApi<null>('auth/refresh', {
     method: 'POST',
   });
 };

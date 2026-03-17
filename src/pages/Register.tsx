@@ -31,10 +31,10 @@ export function RegisterPage() {
   const onSubmit = async (data: RegisterFormValues) => {
     try {
       setGlobalError(null);
-      const { user, accessToken } = await registerUser(data);
+      const { user } = await registerUser(data);
 
       // Simulate session creation on successful register
-      login(user, accessToken);
+      login(user);
       navigate('/');
     } catch (err: unknown) {
       if (err instanceof ApiError) {

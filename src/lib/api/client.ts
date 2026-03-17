@@ -1,17 +1,16 @@
 import { ApiError, type ApiResponse } from './types';
-import { tokenManager } from '../session/tokenManager';
 
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:3000/api/v1';
 
 let isRefreshing = false;
 let failedQueue: Array<{ resolve: (value?: unknown) => void; reject: (reason?: unknown) => void }> = [];
 
-const processQueue = (error: Error | null, token: string | null = null) => {
+const processQueue = (error: Error | null) => {
   failedQueue.forEach(prom => {
     if (error) {
       prom.reject(error);
     } else {
-      prom.resolve(token);
+      prom.resolve();
     }
   });
   failedQueue = [];
@@ -26,11 +25,6 @@ export async function fetchApi<T>(
   const headers = new Headers(options.headers || {});
   if (!headers.has('Content-Type') && !(options.body instanceof FormData)) {
     headers.set('Content-Type', 'application/json');
-  }
-
-  const token = tokenManager.getAccessToken();
-  if (token) {
-    headers.set('Authorization', `Bearer ${token}`);
   }
 
   const credentials = options.credentials || 'include';
@@ -63,17 +57,13 @@ export async function fetchApi<T>(
           throw new Error('Refresh failed');
         }
 
-        const refreshData = await refreshResponse.json() as ApiResponse<{ accessToken: string }>;
-        const newAccessToken = refreshData.data.accessToken;
-
-        tokenManager.setAccessToken(newAccessToken);
-        processQueue(null, newAccessToken);
+        // The cookie is now automatically updated by the backend via Set-Cookie
+        processQueue(null);
 
         // Retry original request
         return fetchApi<T>(endpoint, originalRequest);
       } catch (err) {
-        processQueue(err as Error, null);
-        tokenManager.setAccessToken(null);
+        processQueue(err as Error);
         window.dispatchEvent(new Event('auth:unauthorized'));
         throw new ApiError('Session expired', 401);
       } finally {
