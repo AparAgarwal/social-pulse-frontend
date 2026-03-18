@@ -1,5 +1,5 @@
 
-import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
+import { BrowserRouter, Routes, Route } from 'react-router-dom';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { AuthProvider } from './lib/session/AuthContext';
 
@@ -14,6 +14,7 @@ import { ProfilePage } from './pages/Profile';
 import { PublicProfilePage } from './pages/PublicProfile';
 import { ComposePage } from './pages/Compose';
 import { SettingsPage } from './pages/Settings';
+import { NotFoundPage } from './pages/NotFound';
 
 import { ToastProvider } from './components/ui/Toast';
 import { GlobalModals } from './components/GlobalModals';
@@ -50,7 +51,7 @@ function App() {
               </Route>
 
               {/* Fallback */}
-              <Route path="*" element={<Navigate to="/" replace />} />
+              <Route path="*" element={<NotFoundPage />} />
             </Routes>
           </BrowserRouter>
         </AuthProvider>
