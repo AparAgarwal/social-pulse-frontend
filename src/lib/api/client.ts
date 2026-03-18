@@ -18,7 +18,8 @@ const processQueue = (error: Error | null) => {
 
 export async function fetchApi<T>(
   endpoint: string,
-  options: RequestInit = {}
+  options: RequestInit = {},
+  _retryCount = 0
 ): Promise<T> {
   const url = `${API_BASE_URL}${endpoint.startsWith('/') ? endpoint : `/${endpoint}`}`;
 
@@ -37,9 +38,14 @@ export async function fetchApi<T>(
     });
 
     if (response.status === 401 && endpoint !== '/auth/login' && endpoint !== '/auth/register' && endpoint !== '/auth/refresh') {
+      if (_retryCount >= 1) {
+        console.error('[Auth] Max refresh retries reached for', endpoint);
+        throw new ApiError('Authentication loop detected', 401);
+      }
+
       if (isRefreshing) {
         return new Promise<T>((resolve, reject) => {
-          failedQueue.push({ resolve: () => resolve(fetchApi<T>(endpoint, options)), reject });
+          failedQueue.push({ resolve: () => resolve(fetchApi<T>(endpoint, options, _retryCount + 1)), reject });
         });
       }
 
@@ -49,25 +55,26 @@ export async function fetchApi<T>(
       try {
         const refreshResponse = await fetch(`${API_BASE_URL}/auth/refresh`, {
           method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
           credentials,
         });
 
         if (!refreshResponse.ok) {
+          console.error(`[Auth] Refresh failed with status ${refreshResponse.status}`);
           throw new Error('Refresh failed');
         }
 
-        // The cookie is now automatically updated by the backend via Set-Cookie
+        // Release lock BEFORE processing queue and retrying
+        isRefreshing = false;
         processQueue(null);
 
-        // Retry original request
-        return fetchApi<T>(endpoint, originalRequest);
+        // Retry original request with incremented retry count
+        return fetchApi<T>(endpoint, originalRequest, _retryCount + 1);
       } catch (err) {
+        console.error('[Auth] Refresh/Retry error:', err);
+        isRefreshing = false;
         processQueue(err as Error);
         window.dispatchEvent(new Event('auth:unauthorized'));
         throw new ApiError('Session expired', 401);
-      } finally {
-        isRefreshing = false;
       }
     }
 
