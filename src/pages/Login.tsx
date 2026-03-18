@@ -69,7 +69,7 @@ export function LoginPage() {
 
 
   return (
-    <div className="flex items-center justify-center p-10 relative min-h-screen overflow-hidden">
+    <div className="flex items-center justify-center p-4 py-10 md:p-10 relative min-h-screen overflow-hidden">
 
       {/* Background decorations */}
       <div className="absolute top-[-10%] right-[-5%] -z-10 w-[500px] h-[500px] bg-primary-500/10 rounded-full blur-[120px] animate-pulse-slow"></div>

@@ -39,8 +39,8 @@ export function AuthShellLayout() {
 
       <div className="w-full max-w-7xl flex relative z-10">
         
-        {/* Left Sidebar Navigation */}
-        <aside className="w-20 lg:w-64 border-r border-white/5 h-screen sticky top-0 flex flex-col items-center lg:items-stretch py-6 px-2 lg:px-4 bg-surface/30 backdrop-blur-xl">
+        {/* Left Sidebar Navigation (Desktop) */}
+        <aside className="w-20 lg:w-64 border-r border-white/5 h-screen sticky top-0 hidden md:flex flex-col items-center lg:items-stretch py-6 px-2 lg:px-4 bg-surface/30 backdrop-blur-xl">
           <div className="flex items-center gap-3 lg:px-4 mb-8 group cursor-pointer">
             <div className="h-10 w-10 flex-shrink-0 rounded-xl bg-gradient-to-br from-primary-400 to-primary-600 flex items-center justify-center font-bold text-white shadow-[0_0_15px_rgba(14,165,233,0.5)] group-hover:scale-110 group-hover:shadow-[0_0_25px_rgba(14,165,233,0.8)] transition-all duration-300">
               SP
@@ -86,8 +86,8 @@ export function AuthShellLayout() {
                 </button>
                 <Link to="/profile" className="mt-4 flex items-center gap-3 lg:px-3 rounded-xl hover:bg-white/5 py-2 transition-colors group cursor-pointer">
                    <div className="w-10 h-10 rounded-full bg-gray-700 flex-shrink-0 overflow-hidden flex items-center justify-center text-gray-300 font-bold border border-gray-600">
-                     {user.avatarUrl ? (
-                       <img src={`${user.avatarUrl}?v=${new Date(user.updatedAt).getTime()}`} className="w-full h-full object-cover" alt={user.username} />
+                     {user.profile?.avatar?.url ? (
+                       <img src={`${user.profile.avatar.url}?v=${new Date(user.updatedAt).getTime()}`} className="w-full h-full object-cover" alt={user.username} />
                      ) : (
                        user.fullname?.charAt(0).toUpperCase() || '?'
                      )}
@@ -116,7 +116,7 @@ export function AuthShellLayout() {
         </aside>
 
         {/* Main Feed Content Area */}
-        <main className="flex-1 min-w-0 border-r border-white/5 relative xl:max-w-2xl bg-surface/10 h-screen overflow-y-auto no-scrollbar">
+        <main className="flex-1 min-w-0 border-r border-white/5 relative xl:max-w-2xl bg-surface/10 h-screen overflow-y-auto no-scrollbar pb-16 md:pb-0">
           <Outlet />
         </main>
 
@@ -152,6 +152,57 @@ export function AuthShellLayout() {
           </div>
         </aside>
       </div>
+
+      {/* Mobile Bottom Navigation */}
+      <nav className="fixed bottom-0 w-full bg-surface/80 backdrop-blur-xl border-t border-white/5 md:hidden z-50 flex justify-around items-center h-16 px-2 pb-safe shadow-[0_-10px_30px_rgba(0,0,0,0.5)]">
+        {navItems.map((item) => {
+          if (!user && (item.path === '/profile' || item.path === '/settings' || item.path === '/compose' || item.path === '/notifications')) {
+            return null;
+          }
+          return (
+            <NavLink
+              key={item.path}
+              to={item.path}
+              end={item.path === '/'}
+              className={({ isActive }) => 
+                `flex flex-col items-center justify-center w-full h-full transition-all duration-300
+                ${isActive 
+                  ? 'text-primary-400' 
+                  : 'text-gray-400 hover:text-white'}`
+              }
+            >
+              {({ isActive }) => (
+                <>
+                  <item.icon className={`w-6 h-6 transition-transform ${isActive ? 'scale-110' : ''}`} />
+                  {isActive && <span className="absolute bottom-1 w-1 h-1 rounded-full bg-primary-400"></span>}
+                </>
+              )}
+            </NavLink>
+          );
+        })}
+        {user && (
+           <button 
+             onClick={() => setIsLogoutConfirmOpen(true)}
+             className="flex flex-col items-center justify-center w-full h-full text-gray-400 hover:text-red-400 transition-colors"
+           >
+             <LogOut className="w-6 h-6" />
+           </button>
+        )}
+        {!user && (
+          <div className="flex w-full justify-around items-center px-4 gap-2">
+            <Link to="/login" className="flex-1">
+              <button className="w-full bg-primary-500 hover:bg-primary-400 text-white font-bold py-2 px-2 rounded-lg text-sm transition-colors">
+                Log in
+              </button>
+            </Link>
+            <Link to="/register" className="flex-1">
+              <button className="w-full border border-white/20 hover:bg-white/5 text-gray-200 font-bold py-2 px-2 rounded-lg text-sm transition-colors">
+                Sign up
+              </button>
+            </Link>
+          </div>
+        )}
+      </nav>
       <ConfirmModal
         isOpen={isLogoutConfirmOpen}
         onClose={() => setIsLogoutConfirmOpen(false)}
