@@ -44,14 +44,36 @@ export interface MaxSessionsReachedPayload {
   sessionManagementToken: string;
 }
 
+export interface UserProfileMedia {
+  url: string | null;
+  publicId?: string | null;
+}
+
+export interface UserProfile {
+  bio: string | null;
+  location: string | null;
+  website: string | null;
+  avatar: UserProfileMedia;
+  banner: UserProfileMedia;
+}
+
+export interface UserSocialMetrics {
+  followersCount: number;
+  followingCount: number;
+}
+
+export interface UserAccountSettings {
+  isPrivate: boolean;
+}
+
 export interface User {
   _id: string;
   fullname: string;
   email: string;
   username: string;
-  bio: string | null;
-  avatarUrl: string | null;
-  bannerUrl: string | null;
+  profile?: UserProfile;
+  socialMetrics?: UserSocialMetrics;
+  accountSettings?: UserAccountSettings;
   createdAt: string;
   updatedAt: string;
 }
@@ -59,16 +81,21 @@ export interface User {
 export interface PublicUser {
   fullname: string;
   username: string;
-  bio: string | null;
-  avatarUrl: string | null;
-  bannerUrl: string | null;
+  profile?: UserProfile;
+  socialMetrics?: UserSocialMetrics;
+  accountSettings?: UserAccountSettings;
   createdAt: string;
+  updatedAt: string;
+  isFollowing?: boolean | null;
 }
 
 export interface UpdateProfilePayload {
   fullname?: string;
   username?: string;
   bio?: string;
+  location?: string;
+  website?: string;
+  isPrivate?: boolean;
 }
 
 export interface AuthResponse {
