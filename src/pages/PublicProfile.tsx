@@ -1,24 +1,30 @@
-
 import { useState, useEffect } from 'react';
 import { useParams, Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../lib/session/AuthContext';
-import { getPublicProfile } from '../lib/api/user';
+import { getPublicProfile, followUser, unfollowUser } from '../lib/api/user';
 import { ApiError, type PublicUser } from '../lib/api/types';
-import { Calendar, MapPin, UserX, ArrowLeft } from 'lucide-react';
+import { Calendar, MapPin, UserX, ArrowLeft, Link as LinkIcon, UserPlus, UserMinus, Loader2 } from 'lucide-react';
 import { Button } from '../components/ui/Button';
+import { FollowListModal } from '../components/ui/FollowListModal';
 import { useNavigateBack } from '../hooks/useNavigateBack';
+import { useToast } from '../components/ui/Toast';
 
 
 export function PublicProfilePage() {
   const { username } = useParams<{ username: string }>();
-  const { user } = useAuth();
+  const { user, isLoading: isAuthLoading } = useAuth();
   const navigate = useNavigate();
   const navigateBack = useNavigateBack();
+  const { toast } = useToast();
 
   const [profile, setProfile] = useState<PublicUser | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [notFound, setNotFound] = useState(false);
+  const [isFollowing, setIsFollowing] = useState(false);
+  const [followLoading, setFollowLoading] = useState(false);
+  const [followModalOpen, setFollowModalOpen] = useState(false);
+  const [followModalType, setFollowModalType] = useState<'followers' | 'following'>('followers');
 
   useEffect(() => {
     if (user && username && user.username === username) {
@@ -27,7 +33,8 @@ export function PublicProfilePage() {
   }, [user, username, navigate]);
 
   useEffect(() => {
-    if (!username) return;
+    // Wait for auth to settle so the request includes a valid access token
+    if (isAuthLoading || !username) return;
 
     let cancelled = false;
     setIsLoading(true);
@@ -38,6 +45,7 @@ export function PublicProfilePage() {
       .then(data => {
         if (!cancelled) {
           setProfile(data);
+          setIsFollowing(data.isFollowing === true);
         }
       })
       .catch(err => {
@@ -54,7 +62,52 @@ export function PublicProfilePage() {
       });
 
     return () => { cancelled = true; };
-  }, [username]);
+  }, [username, isAuthLoading]);
+
+  const handleFollowToggle = async () => {
+    if (!profile) return;
+    if (!user) {
+      toast('Please sign in to follow users', 'error');
+      navigate('/login');
+      return;
+    }
+    setFollowLoading(true);
+    try {
+      if (isFollowing) {
+        await unfollowUser(profile.username);
+        setIsFollowing(false);
+        setProfile(p => {
+          if (!p) return null;
+          const currentMetrics = p.socialMetrics || { followersCount: 0, followingCount: 0 };
+          return {
+            ...p,
+            socialMetrics: {
+              ...currentMetrics,
+              followersCount: Math.max(0, currentMetrics.followersCount - 1)
+            }
+          };
+        });
+      } else {
+        await followUser(profile.username);
+        setIsFollowing(true);
+        setProfile(p => {
+          if (!p) return null;
+          const currentMetrics = p.socialMetrics || { followersCount: 0, followingCount: 0 };
+          return {
+            ...p,
+            socialMetrics: {
+              ...currentMetrics,
+              followersCount: currentMetrics.followersCount + 1
+            }
+          };
+        });
+      }
+    } catch (err) {
+      toast('Failed to update follow status', 'error');
+    } finally {
+      setFollowLoading(false);
+    }
+  };
 
   // Loading skeleton
   if (isLoading) {
@@ -135,6 +188,12 @@ export function PublicProfilePage() {
   }
 
   const joinDate = new Date(profile.createdAt).toLocaleDateString('en-US', { month: 'long', year: 'numeric' });
+  const cacheB = profile.updatedAt ? `?v=${new Date(profile.updatedAt).getTime()}` : '';
+  const avatarUrl = profile.profile?.avatar?.url;
+  const bannerUrl = profile.profile?.banner?.url;
+
+  const isPrivate = profile.accountSettings?.isPrivate;
+  const canSeeContent = !isPrivate;
 
   return (
     <div className="flex flex-col w-full min-h-full pb-12">
@@ -149,13 +208,14 @@ export function PublicProfilePage() {
         </Button>
         <div>
           <h1 className="text-xl font-bold text-white tracking-tight">{profile.fullname}</h1>
+          <p className="text-sm text-gray-500 font-medium">{profile.socialMetrics?.followersCount || 0} Followers</p>
         </div>
       </header>
 
       {/* Banner */}
       <div className="h-56 w-full bg-surface relative overflow-hidden">
-        {profile.bannerUrl ? (
-          <img src={profile.bannerUrl} alt={`${profile.username}'s banner`} className="w-full h-full object-cover" />
+        {bannerUrl ? (
+          <img src={`${bannerUrl}${cacheB}`} alt={`${profile.username}'s banner`} className="w-full h-full object-cover" />
         ) : (
           <>
             <div className="absolute inset-0 bg-gradient-to-tr from-primary-900/60 via-surface to-accent/20"></div>
@@ -168,41 +228,82 @@ export function PublicProfilePage() {
         <div className="flex justify-between items-start">
           {/* Avatar */}
           <div className="w-32 h-32 rounded-full border-4 border-background bg-surface relative -mt-16 flex items-center justify-center text-5xl font-bold text-white overflow-hidden shadow-[0_0_30px_rgba(0,0,0,0.5)] z-10">
-            {profile.avatarUrl ? (
-              <img src={profile.avatarUrl} className="w-full h-full object-cover" alt={profile.username} />
+            {avatarUrl ? (
+              <img src={`${avatarUrl}${cacheB}`} className="w-full h-full object-cover" alt={profile.username} />
             ) : (
               <div className="w-full h-full bg-gradient-to-br from-gray-700 to-gray-600 flex items-center justify-center">
                 {profile.fullname.charAt(0).toUpperCase()}
               </div>
             )}
           </div>
+          
+          <div className="mt-4 flex gap-2">
+            <Button
+              variant={isFollowing ? 'outline' : 'primary'}
+              className={`rounded-full flex items-center gap-2 transition-all ${isFollowing ? 'border-gray-600 hover:border-red-500 hover:text-red-500' : ''}`}
+              onClick={handleFollowToggle}
+              disabled={followLoading}
+            >
+              {followLoading ? (
+                 <Loader2 className="w-4 h-4 animate-spin" />
+              ) : isFollowing ? (
+                <>
+                  <UserMinus className="w-4 h-4" /> Unfollow
+                </>
+              ) : (
+                <>
+                   <UserPlus className="w-4 h-4" /> Follow
+                </>
+              )}
+            </Button>
+          </div>
         </div>
 
         <div className="mt-3">
-          <h2 className="text-xl font-extrabold text-white">{profile.fullname}</h2>
+          <div className="flex items-center gap-2">
+            <h2 className="text-xl font-extrabold text-white">{profile.fullname}</h2>
+          </div>
           <p className="text-gray-500">@{profile.username}</p>
         </div>
 
         <div className="mt-4 max-w-2xl text-gray-200">
-          {profile.bio ? (
-            <p>{profile.bio}</p>
+          {profile.profile?.bio ? (
+            <p className="whitespace-pre-wrap">{profile.profile.bio}</p>
           ) : (
-            <p className="text-gray-500 italic">This user has not set a bio yet.</p>
+             <p className="text-gray-500 italic">This user has not set a bio yet.</p>
           )}
         </div>
 
         <div className="mt-4 flex flex-wrap gap-x-4 gap-y-2 text-gray-500 text-sm">
-          <span className="flex items-center gap-1">
-            <MapPin className="w-4 h-4" /> The Internet
-          </span>
+          {profile.profile?.location && (
+            <span className="flex items-center gap-1">
+              <MapPin className="w-4 h-4" /> {profile.profile.location}
+            </span>
+          )}
+          {profile.profile?.website && (
+            <a href={profile.profile.website} target="_blank" rel="noopener noreferrer" className="flex items-center gap-1 text-primary-400 hover:underline">
+              <LinkIcon className="w-4 h-4" /> 
+              {profile.profile.website.replace(/^https?:\/\//, '')}
+            </a>
+          )}
           <span className="flex items-center gap-1">
             <Calendar className="w-4 h-4" /> Joined {joinDate}
           </span>
         </div>
 
         <div className="mt-5 flex gap-4 text-sm">
-          <span className="text-gray-400"><strong className="text-white font-bold">0</strong> Following</span>
-          <span className="text-gray-400"><strong className="text-white font-bold">0</strong> Followers</span>
+          <span 
+            className="text-gray-400 cursor-pointer hover:underline"
+            onClick={() => { setFollowModalType('following'); setFollowModalOpen(true); }}
+          >
+            <strong className="text-white font-bold">{profile.socialMetrics?.followingCount || 0}</strong> Following
+          </span>
+          <span 
+            className="text-gray-400 cursor-pointer hover:underline"
+            onClick={() => { setFollowModalType('followers'); setFollowModalOpen(true); }}
+          >
+            <strong className="text-white font-bold">{profile.socialMetrics?.followersCount || 0}</strong> Followers
+          </span>
         </div>
       </div>
 
@@ -219,9 +320,26 @@ export function PublicProfilePage() {
         ))}
       </div>
 
-      <div className="p-8 text-center text-gray-500">
-        <p className="text-sm">Posts will appear here once the Posts API is deployed.</p>
-      </div>
+      {canSeeContent ? (
+        <div className="p-8 text-center text-gray-500">
+          <p className="text-sm">Posts will appear here once the Posts API is deployed.</p>
+        </div>
+      ) : (
+        <div className="p-12 flex flex-col items-center justify-center text-center gap-4 bg-surface/10 rounded-xl m-4 border border-white/5">
+          <div className="space-y-1">
+            <h3 className="text-xl font-bold text-white">Posts are hidden</h3>
+            <p className="text-gray-500 max-w-xs">{profile.fullname} has made their posts hidden.</p>
+          </div>
+        </div>
+      )}
+
+      {/* Follow List Modal */}
+      <FollowListModal
+        isOpen={followModalOpen}
+        onClose={() => setFollowModalOpen(false)}
+        username={profile.username}
+        type={followModalType}
+      />
     </div>
   );
 }

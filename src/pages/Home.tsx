@@ -17,8 +17,8 @@ export function HomePage() {
       <div className="border-b border-white/5 p-4 flex gap-4 bg-surface/20 transition-colors hover:bg-surface/30">
         <div className="w-12 h-12 rounded-full bg-gradient-to-br from-gray-700 to-gray-600 flex-shrink-0 flex items-center justify-center font-bold text-gray-200 shadow-inner overflow-hidden border border-white/5">
           {user ? (
-            user.avatarUrl ? (
-              <img src={`${user.avatarUrl}?v=${new Date(user.updatedAt).getTime()}`} className="w-full h-full object-cover" alt={user.username} />
+            user.profile?.avatar?.url ? (
+              <img src={`${user.profile.avatar.url}?v=${new Date(user.updatedAt).getTime()}`} className="w-full h-full object-cover" alt={user.username} />
             ) : (
               user.fullname.charAt(0).toUpperCase() || 'U'
             )

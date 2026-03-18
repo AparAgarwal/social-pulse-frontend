@@ -32,6 +32,19 @@ const profileSchema = z.object({
     .max(280, 'Bio must be 280 characters or fewer')
     .optional()
     .or(z.literal('')),
+  location: z
+    .string()
+    .trim()
+    .max(120, 'Location must be 120 characters or fewer')
+    .optional()
+    .or(z.literal('')),
+  website: z
+    .string()
+    .trim()
+    .max(200, 'Website must be 200 characters or fewer')
+    .optional()
+    .or(z.literal('')),
+  isPrivate: z.boolean().optional(),
 });
 
 type ProfileFormValues = z.infer<typeof profileSchema>;
@@ -91,7 +104,10 @@ export function EditProfileModal({ isOpen, onClose }: EditProfileModalProps) {
     defaultValues: {
       fullname: user?.fullname || '',
       username: user?.username || '',
-      bio: user?.bio || '',
+      bio: user?.profile?.bio || '',
+      location: user?.profile?.location || '',
+      website: user?.profile?.website || '',
+      isPrivate: user?.accountSettings?.isPrivate || false,
     },
   });
 
@@ -101,7 +117,10 @@ export function EditProfileModal({ isOpen, onClose }: EditProfileModalProps) {
       reset({
         fullname: user.fullname || '',
         username: user.username || '',
-        bio: user.bio || '',
+        bio: user.profile?.bio || '',
+        location: user.profile?.location || '',
+        website: user.profile?.website || '',
+        isPrivate: user.accountSettings?.isPrivate || false,
       });
       setGlobalError(null);
       setUploadError(null);
@@ -190,24 +209,27 @@ export function EditProfileModal({ isOpen, onClose }: EditProfileModalProps) {
       let currentUser = user;
 
       // 1. Handle Avatar (Upload or Remove)
-      if (avatarRemoved && user.avatarUrl) {
+      if (avatarRemoved && user.profile?.avatar?.url) {
         currentUser = await removeAvatar();
       } else if (pendingAvatar) {
         currentUser = await uploadAvatar(pendingAvatar);
       }
 
       // 2. Handle Banner (Upload or Remove)
-      if (bannerRemoved && user.bannerUrl) {
+      if (bannerRemoved && user.profile?.banner?.url) {
         currentUser = await removeBanner();
       } else if (pendingBanner) {
         currentUser = await uploadBanner(pendingBanner);
       }
 
       // 3. Handle Text Fields
-      const payload: Record<string, string> = {};
+      const payload: Record<string, any> = {};
       if (data.fullname !== user.fullname) payload.fullname = data.fullname;
       if (data.username !== user.username) payload.username = data.username;
-      if ((data.bio || '') !== (user.bio || '')) payload.bio = data.bio || '';
+      if ((data.bio || '') !== (user.profile?.bio || '')) payload.bio = data.bio || '';
+      if ((data.location || '') !== (user.profile?.location || '')) payload.location = data.location || '';
+      if ((data.website || '') !== (user.profile?.website || '')) payload.website = data.website || '';
+      if (data.isPrivate !== user.accountSettings?.isPrivate) payload.isPrivate = data.isPrivate;
 
       if (Object.keys(payload).length > 0) {
         currentUser = await updateProfile(payload);
@@ -227,7 +249,7 @@ export function EditProfileModal({ isOpen, onClose }: EditProfileModalProps) {
           setError('username', { type: 'server', message: 'This username is already taken' });
         } else if (err.errors && err.errors.length > 0) {
           err.errors.forEach(e => {
-            if (e.path && (e.path === 'fullname' || e.path === 'username' || e.path === 'bio')) {
+            if (e.path) {
               setError(e.path as any, { type: 'server', message: e.message });
             }
           });
@@ -245,8 +267,8 @@ export function EditProfileModal({ isOpen, onClose }: EditProfileModalProps) {
   const cacheB = user.updatedAt ? `?v=${new Date(user.updatedAt).getTime()}` : '';
   
   // Determine what to show in the preview
-  const displayBanner = bannerRemoved ? null : (bannerPreview || user.bannerUrl);
-  const displayAvatar = avatarRemoved ? null : (avatarPreview || user.avatarUrl);
+  const displayBanner = bannerRemoved ? null : (bannerPreview || user.profile?.banner?.url);
+  const displayAvatar = avatarRemoved ? null : (avatarPreview || user.profile?.avatar?.url);
   
   const hasChanges = isDirty || pendingAvatar || pendingBanner || avatarRemoved || bannerRemoved;
 
@@ -295,7 +317,7 @@ export function EditProfileModal({ isOpen, onClose }: EditProfileModalProps) {
             <div className="h-44 w-full bg-surface relative overflow-hidden group">
               {displayBanner ? (
                 <img
-                  src={bannerPreview || `${user.bannerUrl}${cacheB}`}
+                  src={bannerPreview ? bannerPreview : `${displayBanner}${cacheB}`}
                   alt="Profile banner"
                   className="w-full h-full object-cover"
                 />
@@ -342,7 +364,7 @@ export function EditProfileModal({ isOpen, onClose }: EditProfileModalProps) {
               <div className="w-28 h-28 rounded-full border-4 border-surface bg-surface relative -mt-14 flex items-center justify-center text-4xl font-bold text-white overflow-hidden shadow-xl group cursor-pointer">
                 {displayAvatar ? (
                   <img
-                    src={avatarPreview || `${user.avatarUrl}${cacheB}`}
+                    src={avatarPreview ? avatarPreview : `${displayAvatar}${cacheB}`}
                     className="w-full h-full object-cover"
                     alt={user.username}
                   />
@@ -428,12 +450,12 @@ export function EditProfileModal({ isOpen, onClose }: EditProfileModalProps) {
                 <div className="relative">
                   <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500 font-medium">@</span>
                   <input
-                    id="edit-username"
-                    type="text"
-                    placeholder="username"
-                    {...register('username')}
-                    className="w-full bg-transparent border border-white/10 rounded-lg pl-8 pr-3 py-2.5 text-base text-white placeholder:text-gray-600 focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent transition-all disabled:opacity-50"
-                    disabled={isSaving}
+                     id="edit-username"
+                     type="text"
+                     placeholder="username"
+                     {...register('username')}
+                     className="w-full bg-transparent border border-white/10 rounded-lg pl-8 pr-3 py-2.5 text-base text-white placeholder:text-gray-600 focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent transition-all disabled:opacity-50"
+                     disabled={isSaving}
                   />
                 </div>
                 {errors.username && (
@@ -456,15 +478,69 @@ export function EditProfileModal({ isOpen, onClose }: EditProfileModalProps) {
                 />
                 <div className="flex justify-between mt-1">
                   {errors.bio ? (
-                    <p className="text-sm text-red-500 font-medium">{errors.bio.message}</p>
-                  ) : (
-                    <span />
-                  )}
-                  <span className={`text-[10px] uppercase tracking-widest font-bold ${bioValue.length > 260 ? 'text-amber-400' : 'text-gray-600'}`}>
-                    {bioValue.length} / 280
-                  </span>
+                     <p className="text-sm text-red-500 font-medium">{errors.bio.message}</p>
+                   ) : (
+                     <span />
+                   )}
+                   <span className={`text-[10px] uppercase tracking-widest font-bold ${bioValue.length > 260 ? 'text-amber-400' : 'text-gray-600'}`}>
+                     {bioValue.length} / 280
+                   </span>
                 </div>
               </div>
+              
+              {/* Location field */}
+              <div className="w-full">
+                <label htmlFor="edit-location" className="block text-xs font-medium text-gray-500 mb-1">
+                  Location
+                </label>
+                <input
+                  id="edit-location"
+                  type="text"
+                  placeholder="Where do you live?"
+                  {...register('location')}
+                  className="w-full bg-transparent border border-white/10 rounded-lg px-3 py-2.5 text-base text-white placeholder:text-gray-600 focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent transition-all disabled:opacity-50"
+                  disabled={isSaving}
+                />
+                {errors.location && (
+                  <p className="mt-1 text-sm text-red-500 font-medium">{errors.location.message}</p>
+                )}
+              </div>
+
+              {/* Website field */}
+              <div className="w-full">
+                <label htmlFor="edit-website" className="block text-xs font-medium text-gray-500 mb-1">
+                  Website
+                </label>
+                <input
+                  id="edit-website"
+                  type="text"
+                  placeholder="https://example.com"
+                  {...register('website')}
+                  className="w-full bg-transparent border border-white/10 rounded-lg px-3 py-2.5 text-base text-white placeholder:text-gray-600 focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent transition-all disabled:opacity-50"
+                  disabled={isSaving}
+                />
+                 {errors.website && (
+                  <p className="mt-1 text-sm text-red-500 font-medium">{errors.website.message}</p>
+                )}
+              </div>
+
+              {/* Privacy toggle */}
+              <div className="w-full flex items-center justify-between mt-4 p-4 border border-white/10 rounded-lg bg-white/5">
+                <div>
+                  <h4 className="text-sm font-medium text-white">Private Account</h4>
+                  <p className="text-xs text-gray-400 mt-1">Only approved followers can see your posts.</p>
+                </div>
+                <label className="relative inline-flex items-center cursor-pointer">
+                  <input
+                    type="checkbox"
+                    className="sr-only peer"
+                    {...register('isPrivate')}
+                    disabled={isSaving}
+                  />
+                  <div className="w-11 h-6 bg-gray-600 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-primary-500"></div>
+                </label>
+              </div>
+
             </div>
           </div>
         </div>
