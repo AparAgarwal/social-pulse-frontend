@@ -1,22 +1,46 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useAuth } from '../lib/session/AuthContext';
 import { Button } from '../components/ui/Button';
-import { Calendar, MapPin, Edit3, Share, ArrowLeft, Link as LinkIcon, Lock } from 'lucide-react';
+import { Calendar, MapPin, Edit3, Share, ArrowLeft, Link as LinkIcon, Lock, Loader2 } from 'lucide-react';
 import { EditProfileModal } from '../components/ui/EditProfileModal';
 import { FollowListModal } from '../components/ui/FollowListModal';
 import { ImagePreviewModal } from '../components/ui/ImagePreviewModal';
 import { useToast } from '../components/ui/Toast';
 import { useNavigateBack } from '../hooks/useNavigateBack';
+import { getUserPosts } from '../lib/api/posts';
+import { PostCard } from '../components/PostCard';
+import type { Post } from '../lib/api/types';
 
 export function ProfilePage() {
   const { user } = useAuth();
   const { toast } = useToast();
   const navigateBack = useNavigateBack();
 
+  const [posts, setPosts] = useState<Post[]>([]);
+  const [loadingPosts, setLoadingPosts] = useState(true);
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const [followModalOpen, setFollowModalOpen] = useState(false);
   const [followModalType, setFollowModalType] = useState<'followers' | 'following'>('followers');
   const [previewImage, setPreviewImage] = useState<{ url: string; alt: string } | null>(null);
+
+  useEffect(() => {
+    if (user) {
+      fetchUserPosts();
+    }
+  }, [user]);
+
+  const fetchUserPosts = async () => {
+    if (!user) return;
+    try {
+      setLoadingPosts(true);
+      const data = await getUserPosts(user.username, 1, 20);
+      setPosts(data.posts);
+    } catch (err) {
+      toast('Failed to load your posts', 'error');
+    } finally {
+      setLoadingPosts(false);
+    }
+  };
 
   if (!user) return null;
 
@@ -91,10 +115,10 @@ export function ProfilePage() {
       </div>
 
       <div className="px-4 relative mb-6">
-        <div className="flex justify-between items-start">
+        <div className="flex flex-col min-[450px]:flex-row justify-between items-start min-[450px]:items-end gap-4">
           {/* Avatar */}
           <div
-            className={`w-32 h-32 rounded-full border-4 border-background bg-surface relative -mt-16 flex items-center justify-center text-5xl font-bold text-white overflow-hidden shadow-[0_0_30px_rgba(0,0,0,0.5)] z-10 transition-transform hover:scale-105 duration-300 ${avatarUrl ? 'cursor-pointer' : ''}`}
+            className={`w-24 h-24 min-[450px]:w-32 min-[450px]:h-32 rounded-full border-4 border-background bg-surface relative -mt-12 min-[450px]:-mt-16 flex items-center justify-center text-4xl min-[450px]:text-5xl font-bold text-white overflow-hidden shadow-[0_0_30px_rgba(0,0,0,0.5)] z-10 transition-transform hover:scale-105 duration-300 ${avatarUrl ? 'cursor-pointer' : ''}`}
             onClick={() => openPreview(avatarUrl, user.username)}
           >
             {avatarUrl ? (
@@ -105,20 +129,24 @@ export function ProfilePage() {
               </div>
             )}
           </div>
-          <div className="mt-4 flex gap-2">
+          
+          {/* Profile Actions */}
+          <div className="flex flex-col min-[450px]:flex-row gap-2 w-full min-[450px]:w-auto">
             <Button
               variant="outline"
-              className="rounded-full flex items-center gap-2 border-gray-600 hover:border-gray-500 hover:bg-white/5 transition-all text-gray-300"
+              className="flex-1 min-[450px]:flex-none rounded-full flex items-center justify-center gap-2 border-gray-600 hover:border-gray-500 hover:bg-white/5 transition-all text-gray-300 px-4"
               onClick={handleShare}
             >
-              <Share className="w-4 h-4 text-gray-400" /> Share
+              <Share className="w-4 h-4 text-gray-400" /> 
+              <span className="text-sm min-[450px]:text-base">Share</span>
             </Button>
             <Button
               variant="outline"
-              className="rounded-full flex items-center gap-2 border-gray-600 hover:border-gray-500 hover:bg-white/5"
+              className="flex-1 min-[450px]:flex-none rounded-full flex items-center justify-center gap-2 border-gray-600 hover:border-gray-500 hover:bg-white/5 px-4"
               onClick={() => setIsEditModalOpen(true)}
             >
-              <Edit3 className="w-4 h-4" /> Edit profile
+              <Edit3 className="w-4 h-4" /> 
+              <span className="text-sm min-[450px]:text-base whitespace-nowrap">Edit profile</span>
             </Button>
           </div>
         </div>
@@ -185,8 +213,23 @@ export function ProfilePage() {
         ))}
       </div>
 
-      <div className="p-8 text-center text-gray-500">
-        <p className="text-sm">Posts will appear here once the Posts API is deployed.</p>
+      <div className="flex-1">
+        {loadingPosts ? (
+          <div className="flex justify-center p-12">
+            <Loader2 className="w-8 h-8 text-primary-400 animate-spin" />
+          </div>
+        ) : posts.length > 0 ? (
+          <div className="flex flex-col">
+            {posts.map(post => (
+              <PostCard key={post.postId} post={post} onActionSuccess={fetchUserPosts} />
+            ))}
+          </div>
+        ) : (
+          <div className="p-12 text-center text-gray-500 flex flex-col items-center gap-2">
+            <p className="text-lg font-medium text-white/60">No posts yet</p>
+            <p className="text-sm">When you publish posts, they will appear here.</p>
+          </div>
+        )}
       </div>
 
       {/* Edit Profile Modal */}

@@ -2,12 +2,14 @@ import { useState, useEffect } from 'react';
 import { useParams, Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../lib/session/AuthContext';
 import { getPublicProfile, followUser, unfollowUser } from '../lib/api/user';
-import { ApiError, type PublicUser } from '../lib/api/types';
-import { Calendar, MapPin, UserX, ArrowLeft, Link as LinkIcon, UserPlus, UserMinus, Loader2 } from 'lucide-react';
+import { ApiError, type PublicUser, type Post } from '../lib/api/types';
+import { Calendar, MapPin, UserX, ArrowLeft, Link as LinkIcon, UserPlus, UserMinus, Loader2, Lock } from 'lucide-react';
 import { Button } from '../components/ui/Button';
 import { FollowListModal } from '../components/ui/FollowListModal';
 import { useNavigateBack } from '../hooks/useNavigateBack';
 import { useToast } from '../components/ui/Toast';
+import { getUserPosts } from '../lib/api/posts';
+import { PostCard } from '../components/PostCard';
 
 
 export function PublicProfilePage() {
@@ -25,6 +27,9 @@ export function PublicProfilePage() {
   const [followLoading, setFollowLoading] = useState(false);
   const [followModalOpen, setFollowModalOpen] = useState(false);
   const [followModalType, setFollowModalType] = useState<'followers' | 'following'>('followers');
+
+  const [posts, setPosts] = useState<Post[]>([]);
+  const [loadingPosts, setLoadingPosts] = useState(false);
 
   useEffect(() => {
     if (user && username && user.username === username) {
@@ -46,6 +51,9 @@ export function PublicProfilePage() {
         if (!cancelled) {
           setProfile(data);
           setIsFollowing(data.isFollowing === true);
+          if (data.accountSettings?.isPrivate === false) {
+             fetchUserPosts(data.username);
+          }
         }
       })
       .catch(err => {
@@ -63,6 +71,18 @@ export function PublicProfilePage() {
 
     return () => { cancelled = true; };
   }, [username, isAuthLoading]);
+
+  const fetchUserPosts = async (uname: string) => {
+    try {
+      setLoadingPosts(true);
+      const data = await getUserPosts(uname, 1, 20);
+      setPosts(data.posts);
+    } catch (err) {
+      console.error('Failed to load posts:', err);
+    } finally {
+      setLoadingPosts(false);
+    }
+  };
 
   const handleFollowToggle = async () => {
     if (!profile) return;
@@ -225,9 +245,9 @@ export function PublicProfilePage() {
       </div>
 
       <div className="px-4 relative mb-6">
-        <div className="flex justify-between items-start">
+        <div className="flex flex-col min-[450px]:flex-row justify-between items-start min-[450px]:items-end gap-4">
           {/* Avatar */}
-          <div className="w-32 h-32 rounded-full border-4 border-background bg-surface relative -mt-16 flex items-center justify-center text-5xl font-bold text-white overflow-hidden shadow-[0_0_30px_rgba(0,0,0,0.5)] z-10">
+          <div className="w-24 h-24 min-[450px]:w-32 min-[450px]:h-32 rounded-full border-4 border-background bg-surface relative -mt-12 min-[450px]:-mt-16 flex items-center justify-center text-4xl min-[450px]:text-5xl font-bold text-white overflow-hidden shadow-[0_0_30px_rgba(0,0,0,0.5)] z-10 transition-transform hover:scale-105 duration-300">
             {avatarUrl ? (
               <img src={`${avatarUrl}${cacheB}`} className="w-full h-full object-cover" alt={profile.username} />
             ) : (
@@ -237,10 +257,10 @@ export function PublicProfilePage() {
             )}
           </div>
           
-          <div className="mt-4 flex gap-2">
+          <div className="flex flex-col min-[450px]:flex-row gap-2 w-full min-[450px]:w-auto">
             <Button
               variant={isFollowing ? 'outline' : 'primary'}
-              className={`rounded-full flex items-center gap-2 transition-all ${isFollowing ? 'border-gray-600 hover:border-red-500 hover:text-red-500' : ''}`}
+              className={`flex-1 min-[450px]:flex-none rounded-full flex items-center justify-center gap-2 transition-all px-6 ${isFollowing ? 'border-gray-600 hover:border-red-500 hover:text-red-500' : ''}`}
               onClick={handleFollowToggle}
               disabled={followLoading}
             >
@@ -248,11 +268,13 @@ export function PublicProfilePage() {
                  <Loader2 className="w-4 h-4 animate-spin" />
               ) : isFollowing ? (
                 <>
-                  <UserMinus className="w-4 h-4" /> Unfollow
+                  <UserMinus className="w-4 h-4" /> 
+                  <span className="text-sm min-[450px]:text-base">Unfollow</span>
                 </>
               ) : (
                 <>
-                   <UserPlus className="w-4 h-4" /> Follow
+                   <UserPlus className="w-4 h-4" /> 
+                   <span className="text-sm min-[450px]:text-base">Follow</span>
                 </>
               )}
             </Button>
@@ -320,18 +342,33 @@ export function PublicProfilePage() {
         ))}
       </div>
 
-      {canSeeContent ? (
-        <div className="p-8 text-center text-gray-500">
-          <p className="text-sm">Posts will appear here once the Posts API is deployed.</p>
-        </div>
-      ) : (
-        <div className="p-12 flex flex-col items-center justify-center text-center gap-4 bg-surface/10 rounded-xl m-4 border border-white/5">
-          <div className="space-y-1">
-            <h3 className="text-xl font-bold text-white">Posts are hidden</h3>
-            <p className="text-gray-500 max-w-xs">{profile.fullname} has made their posts hidden.</p>
+      <div className="flex-1">
+        {loadingPosts ? (
+          <div className="flex justify-center p-12">
+            <Loader2 className="w-8 h-8 text-primary-400 animate-spin" />
           </div>
-        </div>
-      )}
+        ) : canSeeContent ? (
+          posts.length > 0 ? (
+            <div className="flex flex-col">
+              {posts.map(post => (
+                <PostCard key={post.postId} post={post} />
+              ))}
+            </div>
+          ) : (
+            <div className="p-12 text-center text-gray-500">
+              <p>No posts yet.</p>
+            </div>
+          )
+        ) : (
+          <div className="p-12 flex flex-col items-center justify-center text-center gap-4 bg-surface/10 rounded-xl m-4 border border-white/5">
+            <Lock className="w-10 h-10 text-gray-500" />
+            <div className="space-y-1">
+              <h3 className="text-xl font-bold text-white">Posts are hidden</h3>
+              <p className="text-gray-500 max-w-xs">{profile.fullname} has made their posts hidden.</p>
+            </div>
+          </div>
+        )}
+      </div>
 
       {/* Follow List Modal */}
       <FollowListModal
