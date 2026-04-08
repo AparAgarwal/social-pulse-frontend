@@ -101,3 +101,71 @@ export interface UpdateProfilePayload {
 export interface AuthResponse {
   user: User;
 }
+
+export interface AuthorMini {
+  _id: string;
+  fullname: string;
+  username: string;
+  profile?: {
+    avatar?: {
+      url?: string | null;
+    };
+  };
+}
+
+export interface PostEngagement {
+  likesCount: number;
+  commentsCount: number;
+  sharesCount: number;
+}
+
+export interface Post {
+  _id: string;
+  postId: string; // Public shortId
+  author: AuthorMini;
+  content: {
+    text: string;
+  };
+  media?: {
+    url: string;
+    type: 'image' | 'video' | 'gif';
+    alt?: string;
+  }[];
+  tags?: string[];
+  visibility: 'public' | 'followers' | 'private';
+  status: 'published' | 'draft' | 'archived' | 'deleted';
+  allowComments: boolean;
+  engagementMetrics: PostEngagement;
+  likedByMe: boolean;
+  deletedAt?: string;
+  restoreUntil?: string;
+  publishedAt?: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface CommentItem {
+  _id: string;
+  post: string;
+  author: AuthorMini;
+  content: string;
+  parentComment: string | null;
+  repliesCount?: number;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface CreateCommentPayload {
+  content: string;
+  parentComment?: string;
+}
+
+export interface CommentsResponse {
+  comments: CommentItem[];
+  pagination: {
+    page: number;
+    limit: number;
+    total: number;
+    hasMore: boolean;
+  };
+}
