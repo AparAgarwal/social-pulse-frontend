@@ -134,7 +134,7 @@ export function useLikePostMutation() {
         return typedData;
       });
     },
-    onSettled: (data, error, postId) => {
+    onSettled: (_data, _error, postId) => {
       // Invalidate to ensure consistency, though optimistic UI handles immediate feedback.
       queryClient.invalidateQueries({ queryKey: postKeys.detail(postId) });
     }
@@ -180,7 +180,7 @@ export function useUnlikePostMutation() {
         return typedData;
       });
     },
-    onSettled: (data, error, postId) => {
+    onSettled: (_data, _error, postId) => {
       queryClient.invalidateQueries({ queryKey: postKeys.detail(postId) });
     }
   });
@@ -222,7 +222,7 @@ export function useAddCommentMutation() {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: ({ postId, payload }: { postId: string; payload: CreateCommentPayload }) => addComment(postId, payload),
-    onSuccess: (data, variables) => {
+    onSuccess: (_data, variables) => {
       queryClient.invalidateQueries({ queryKey: postKeys.comments(variables.postId) });
       queryClient.invalidateQueries({ queryKey: postKeys.detail(variables.postId) });
       
@@ -255,7 +255,7 @@ export function useDeleteCommentMutation() {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: ({ commentId }: { commentId: string; postId: string }) => deleteComment(commentId),
-    onSuccess: (data, variables) => {
+    onSuccess: (_data, variables) => {
       queryClient.invalidateQueries({ queryKey: postKeys.comments(variables.postId) });
       queryClient.invalidateQueries({ queryKey: postKeys.detail(variables.postId) });
     }

@@ -42,7 +42,7 @@ export const CommentComposer: React.FC<CommentComposerProps> = ({
       setContent('');
       onSuccess?.(newComment);
       toast('Comment posted!', 'success');
-    } catch (err) {
+    } catch {
       toast('Failed to post comment', 'error');
     }
   };

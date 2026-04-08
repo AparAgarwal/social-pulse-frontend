@@ -1,9 +1,10 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { UserX, Loader2 } from 'lucide-react';
 import { Modal } from './Modal';
 import { getFollowers, getFollowing } from '../../lib/api/user';
 import { Button } from './Button';
 import { Link } from 'react-router-dom';
+import type { PublicUser } from '../../lib/api/types';
 
 interface FollowListModalProps {
   isOpen: boolean;
@@ -13,22 +14,13 @@ interface FollowListModalProps {
 }
 
 export function FollowListModal({ isOpen, onClose, username, type }: FollowListModalProps) {
-  const [users, setUsers] = useState<any[]>([]);
+  const [users, setUsers] = useState<PublicUser[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [page, setPage] = useState(1);
   const [hasMore, setHasMore] = useState(false);
 
-  useEffect(() => {
-    if (isOpen && username) {
-      setUsers([]);
-      setPage(1);
-      setError(null);
-      fetchUsers(1);
-    }
-  }, [isOpen, username, type]);
-
-  const fetchUsers = async (pageNum: number) => {
+  const fetchUsers = useCallback(async (pageNum: number) => {
     setLoading(true);
     try {
       const response = type === 'followers' 
@@ -45,12 +37,21 @@ export function FollowListModal({ isOpen, onClose, username, type }: FollowListM
       
       setHasMore(response.pagination?.hasMore || false);
       setPage(pageNum);
-    } catch (err: any) {
-      setError(err.message || 'Failed to load users');
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to load users');
     } finally {
       setLoading(false);
     }
-  };
+  }, [username, type]);
+
+  useEffect(() => {
+    if (isOpen && username) {
+      setUsers([]);
+      setPage(1);
+      setError(null);
+      fetchUsers(1);
+    }
+  }, [isOpen, username, type, fetchUsers]);
 
   const handleLoadMore = () => {
     if (!loading && hasMore) {

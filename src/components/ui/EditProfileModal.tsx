@@ -5,7 +5,7 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import { X, Camera, Trash2, AlertCircle } from 'lucide-react';
 import { useAuth } from '../../lib/session/AuthContext';
 import { updateProfile, uploadAvatar, uploadBanner, removeAvatar, removeBanner } from '../../lib/api/user';
-import { ApiError } from '../../lib/api/types';
+import { ApiError, type UpdateProfilePayload } from '../../lib/api/types';
 import { Modal } from './Modal';
 import { ImageCropper } from './ImageCropper';
 import { Button } from './Button';
@@ -223,7 +223,7 @@ export function EditProfileModal({ isOpen, onClose }: EditProfileModalProps) {
       }
 
       // 3. Handle Text Fields
-      const payload: Record<string, any> = {};
+      const payload: Partial<UpdateProfilePayload> = {};
       if (data.fullname !== user.fullname) payload.fullname = data.fullname;
       if (data.username !== user.username) payload.username = data.username;
       if ((data.bio || '') !== (user.profile?.bio || '')) payload.bio = data.bio || '';
@@ -250,7 +250,7 @@ export function EditProfileModal({ isOpen, onClose }: EditProfileModalProps) {
         } else if (err.errors && err.errors.length > 0) {
           err.errors.forEach(e => {
             if (e.path) {
-              setError(e.path as any, { type: 'server', message: e.message });
+              setError(e.path as keyof ProfileFormValues, { type: 'server', message: e.message });
             }
           });
         } else {

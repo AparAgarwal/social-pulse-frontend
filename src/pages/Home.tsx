@@ -33,7 +33,7 @@ export function HomePage() {
       });
       setContent('');
       toast('Post published!', 'success');
-    } catch (err) {
+    } catch {
       toast('Failed to create post', 'error');
     }
   };
@@ -115,7 +115,7 @@ export function HomePage() {
                 <div className="relative group ml-2">
                   <select
                     value={postVisibility}
-                    onChange={(e) => setPostVisibility(e.target.value as any)}
+                    onChange={(e) => setPostVisibility(e.target.value as 'public' | 'followers' | 'private')}
                     className="appearance-none bg-surface/30 border border-white/10 text-xs text-gray-300 rounded-full px-3 py-1.5 focus:outline-none focus:ring-1 focus:ring-primary-500/50 pr-8"
                   >
                     <option value="public">Public</option>

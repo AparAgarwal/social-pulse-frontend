@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { ActiveSessionsList } from '../ui/ActiveSessionsList';
 import { getActiveSessions, revokeActiveSession } from '../../lib/api/auth';
 import type { ActiveSession } from '../../lib/api/types';
@@ -19,27 +19,28 @@ export const SettingsSessions = () => {
 
   const { logout } = useAuth();
 
-  const extractSessions = (data: any): ActiveSession[] => {
+  const extractSessions = useCallback((data: unknown): ActiveSession[] => {
     if (Array.isArray(data)) return data;
-    if (data && Array.isArray(data.activeSessions)) return data.activeSessions;
-    if (data && Array.isArray(data.sessions)) return data.sessions;
+    const d = data as Record<string, unknown>;
+    if (d && Array.isArray(d.activeSessions)) return d.activeSessions as ActiveSession[];
+    if (d && Array.isArray(d.sessions)) return d.sessions as ActiveSession[];
     return [];
-  };
+  }, []);
 
-  const fetchSessions = async () => {
+  const fetchSessions = useCallback(async () => {
     try {
       const data = await getActiveSessions();
       setSessions(extractSessions(data));
-    } catch (err: any) {
-      setError(err.message || 'Failed to fetch active sessions');
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to fetch active sessions');
     } finally {
       setIsLoading(false);
     }
-  };
+  }, [extractSessions]);
 
   useEffect(() => {
     fetchSessions();
-  }, []);
+  }, [fetchSessions]);
 
   const handleRevoke = async (sessionId: string) => {
     const session = sessions.find(s => s.sessionId === sessionId);
@@ -68,8 +69,8 @@ export const SettingsSessions = () => {
       }
       
       await fetchSessions();
-    } catch (err: any) {
-      setError(err.message || 'Failed to revoke session');
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to revoke session');
       setIsRevoking(false);
       setRevokingSessionId(null);
     } finally {

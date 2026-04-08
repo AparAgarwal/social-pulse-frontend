@@ -24,7 +24,7 @@ export function ComposePage() {
       });
       toast('Post published successfully!', 'success');
       navigateBack();
-    } catch (err) {
+    } catch {
       toast('Failed to publish post', 'error');
     }
   };
@@ -64,7 +64,7 @@ export function ComposePage() {
                 <div className="relative group ml-4">
                   <select
                     value={visibility}
-                    onChange={(e) => setVisibility(e.target.value as any)}
+                    onChange={(e) => setVisibility(e.target.value as 'public' | 'followers' | 'private')}
                     className="appearance-none bg-surface/30 border border-white/10 text-sm text-gray-300 rounded-full px-4 py-2 focus:outline-none focus:ring-1 focus:ring-primary-500/50 pr-10 hover:bg-surface/50 cursor-pointer transition-colors"
                   >
                     <option value="public">Public</option>

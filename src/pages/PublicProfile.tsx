@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { useParams, Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../lib/session/AuthContext';
 import { getPublicProfile, followUser, unfollowUser } from '../lib/api/user';
@@ -31,6 +31,18 @@ export function PublicProfilePage() {
   const [posts, setPosts] = useState<Post[]>([]);
   const [loadingPosts, setLoadingPosts] = useState(false);
 
+  const fetchUserPosts = useCallback(async (uname: string) => {
+    try {
+      setLoadingPosts(true);
+      const data = await getUserPosts(uname, 1, 20);
+      setPosts(data.posts);
+    } catch {
+      setPosts([]);
+    } finally {
+      setLoadingPosts(false);
+    }
+  }, []);
+
   useEffect(() => {
     if (user && username && user.username === username) {
       navigate('/profile', { replace: true });
@@ -51,9 +63,6 @@ export function PublicProfilePage() {
         if (!cancelled) {
           setProfile(data);
           setIsFollowing(data.isFollowing === true);
-          if (data.accountSettings?.isPrivate === false) {
-             fetchUserPosts(data.username);
-          }
         }
       })
       .catch(err => {
@@ -72,17 +81,18 @@ export function PublicProfilePage() {
     return () => { cancelled = true; };
   }, [username, isAuthLoading]);
 
-  const fetchUserPosts = async (uname: string) => {
-    try {
-      setLoadingPosts(true);
-      const data = await getUserPosts(uname, 1, 20);
-      setPosts(data.posts);
-    } catch (err) {
-      console.error('Failed to load posts:', err);
-    } finally {
+  useEffect(() => {
+    if (!profile?.username) return;
+
+    const canLoadPosts = !profile.accountSettings?.isPrivate || isFollowing;
+    if (!canLoadPosts) {
+      setPosts([]);
       setLoadingPosts(false);
+      return;
     }
-  };
+
+    void fetchUserPosts(profile.username);
+  }, [profile?.username, profile?.accountSettings?.isPrivate, isFollowing, fetchUserPosts]);
 
   const handleFollowToggle = async () => {
     if (!profile) return;
@@ -122,7 +132,7 @@ export function PublicProfilePage() {
           };
         });
       }
-    } catch (err) {
+    } catch {
       toast('Failed to update follow status', 'error');
     } finally {
       setFollowLoading(false);
@@ -213,7 +223,7 @@ export function PublicProfilePage() {
   const bannerUrl = profile.profile?.banner?.url;
 
   const isPrivate = profile.accountSettings?.isPrivate;
-  const canSeeContent = !isPrivate;
+  const canSeeContent = !isPrivate || isFollowing;
 
   return (
     <div className="flex flex-col w-full min-h-full pb-12">

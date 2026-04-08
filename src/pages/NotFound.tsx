@@ -17,26 +17,41 @@ export function NotFoundPage() {
     return () => window.removeEventListener('mousemove', handleMouseMove);
   }, []);
 
-  const getEyeStyle = (eyeRef: RefObject<HTMLDivElement | null>) => {
-    if (!eyeRef.current) return {};
+  const [eyeStyles, setEyeStyles] = useState<{ left: React.CSSProperties; right: React.CSSProperties }>({
+    left: {},
+    right: {},
+  });
 
-    const rect = eyeRef.current.getBoundingClientRect();
-    const eyeCenterX = rect.left + rect.width / 2;
-    const eyeCenterY = rect.top + rect.height / 2;
+  useEffect(() => {
+    const calculateStyles = () => {
+      const getStyle = (ref: RefObject<HTMLDivElement | null>) => {
+        if (!ref.current) return {};
+        const rect = ref.current.getBoundingClientRect();
+        const eyeCenterX = rect.left + rect.width / 2;
+        const eyeCenterY = rect.top + rect.height / 2;
 
-    const angle = Math.atan2(mousePos.y - eyeCenterY, mousePos.x - eyeCenterX);
-    const distance = Math.min(
-      Math.hypot(mousePos.x - eyeCenterX, mousePos.y - eyeCenterY) / 10,
-      15 // Max offset
-    );
+        const angle = Math.atan2(mousePos.y - eyeCenterY, mousePos.x - eyeCenterX);
+        const distance = Math.min(
+          Math.hypot(mousePos.x - eyeCenterX, mousePos.y - eyeCenterY) / 10,
+          15 // Max offset
+        );
 
-    const translateX = Math.cos(angle) * distance;
-    const translateY = Math.sin(angle) * distance;
+        const translateX = Math.cos(angle) * distance;
+        const translateY = Math.sin(angle) * distance;
 
-    return {
-      transform: `translate(${translateX}px, ${translateY}px)`,
+        return {
+          transform: `translate(${translateX}px, ${translateY}px)`,
+        };
+      };
+
+      setEyeStyles({
+        left: getStyle(eyeLeftRef),
+        right: getStyle(eyeRightRef),
+      });
     };
-  };
+
+    calculateStyles();
+  }, [mousePos]);
 
   return (
     <div className="flex flex-col items-center justify-center min-h-screen relative overflow-hidden bg-background px-6">
@@ -48,7 +63,7 @@ export function NotFoundPage() {
           <div
             ref={eyeLeftRef}
             className="w-12 h-12 bg-gray-900 rounded-full flex items-center justify-center transition-transform duration-75 ease-out"
-            style={getEyeStyle(eyeLeftRef)}
+            style={eyeStyles.left}
           >
             <div className="w-4 h-4 bg-white rounded-full absolute top-2 right-2 opacity-80"></div>
           </div>
@@ -59,7 +74,7 @@ export function NotFoundPage() {
           <div
             ref={eyeRightRef}
             className="w-12 h-12 bg-gray-900 rounded-full flex items-center justify-center transition-transform duration-75 ease-out"
-            style={getEyeStyle(eyeRightRef)}
+            style={eyeStyles.right}
           >
             <div className="w-4 h-4 bg-white rounded-full absolute top-2 right-2 opacity-80"></div>
           </div>

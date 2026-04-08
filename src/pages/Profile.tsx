@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { useAuth } from '../lib/session/AuthContext';
 import { Button } from '../components/ui/Button';
 import { Calendar, MapPin, Edit3, Share, ArrowLeft, Link as LinkIcon, Lock, Loader2 } from 'lucide-react';
@@ -23,24 +23,24 @@ export function ProfilePage() {
   const [followModalType, setFollowModalType] = useState<'followers' | 'following'>('followers');
   const [previewImage, setPreviewImage] = useState<{ url: string; alt: string } | null>(null);
 
-  useEffect(() => {
-    if (user) {
-      fetchUserPosts();
-    }
-  }, [user]);
-
-  const fetchUserPosts = async () => {
+  const fetchUserPosts = useCallback(async () => {
     if (!user) return;
     try {
       setLoadingPosts(true);
       const data = await getUserPosts(user.username, 1, 20);
       setPosts(data.posts);
-    } catch (err) {
+    } catch {
       toast('Failed to load your posts', 'error');
     } finally {
       setLoadingPosts(false);
     }
-  };
+  }, [user, toast]);
+
+  useEffect(() => {
+    if (user) {
+      fetchUserPosts();
+    }
+  }, [user, fetchUserPosts]);
 
   if (!user) return null;
 
@@ -76,7 +76,7 @@ export function ProfilePage() {
       try {
         await navigator.clipboard.writeText(publicUrl);
         toast('Profile link copied to clipboard!');
-      } catch (err) {
+      } catch {
         toast('Failed to copy link', 'error');
       }
     }

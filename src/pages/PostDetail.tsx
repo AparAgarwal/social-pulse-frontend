@@ -2,6 +2,7 @@ import React from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
 import { ArrowLeft, Loader2, Lock } from 'lucide-react';
 import { usePostQuery, useCommentsQuery } from '../hooks/usePosts';
+import { ApiError } from '../lib/api/types';
 import { PostCard } from '../components/PostCard';
 import { CommentComposer } from '../components/CommentComposer';
 import { CommentItem } from '../components/CommentItem';
@@ -22,7 +23,7 @@ export const PostDetailPage: React.FC = () => {
     );
   }
 
-  if (postError && (postError as any).status === 403) {
+  if (postError && (postError as ApiError).statusCode === 403) {
     return (
       <div className="p-12 text-center bg-surface/5 border border-white/5 mx-auto max-w-2xl mt-12 rounded-3xl flex flex-col items-center gap-4">
         <div className="w-16 h-16 bg-white/5 rounded-full flex items-center justify-center">

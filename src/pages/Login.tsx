@@ -26,7 +26,7 @@ export function LoginPage() {
   const navigate = useNavigate();
   const { login } = useAuth();
 
-  const { register, handleSubmit, setError, watch, formState: { errors, isSubmitting } } = useForm<LoginFormValues>({
+  const { register, handleSubmit, setError, getValues, formState: { errors, isSubmitting } } = useForm<LoginFormValues>({
     resolver: zodResolver(loginSchema)
   });
 
@@ -45,8 +45,9 @@ export function LoginPage() {
       navigate('/');
     } catch (err: unknown) {
       if (err instanceof ApiError) {
-        if (err.statusCode === 409 && err.data?.code === 'MAX_ACTIVE_SESSIONS_REACHED') {
-          setBlockedPayload(err.data);
+        const maxSessionsPayload = err.data as MaxSessionsReachedPayload | undefined;
+        if (err.statusCode === 409 && maxSessionsPayload?.code === 'MAX_ACTIVE_SESSIONS_REACHED') {
+          setBlockedPayload(maxSessionsPayload);
         } else if (err.errors && err.errors.length > 0) {
           err.errors.forEach(e => {
             setError((e.path as 'identifier' | 'password' | 'root') || 'identifier', { type: 'manual', message: e.message });
@@ -60,11 +61,9 @@ export function LoginPage() {
     }
   };
 
-  const currentValues = watch();
-
   const handleRetry = () => {
     setBlockedPayload(null);
-    onSubmit(currentValues);
+    void onSubmit(getValues());
   };
 
 

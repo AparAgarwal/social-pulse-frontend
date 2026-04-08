@@ -69,8 +69,8 @@ export interface PaginatedUsers {
     total: number;
     hasMore: boolean;
   };
-  followers?: any[];
-  following?: any[];
+  followers?: PublicUser[];
+  following?: PublicUser[];
 }
 
 export const getFollowers = async (username: string, page = 1, limit = 20): Promise<PaginatedUsers> => {

@@ -43,7 +43,7 @@ export const CommentItem: React.FC<CommentItemProps> = ({
       await deleteComment({ commentId: comment._id, postId: comment.post });
       onDelete?.(comment._id);
       toast('Comment deleted', 'success');
-    } catch (err) {
+    } catch {
       toast('Failed to delete comment', 'error');
     } finally {
       setIsDeleteModalOpen(false);

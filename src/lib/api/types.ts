@@ -14,9 +14,9 @@ export interface ApiResponse<T = unknown> {
 export class ApiError extends Error {
   statusCode: number;
   errors?: ApiErrorDetail[];
-  data?: any;
+  data?: unknown;
 
-  constructor(message: string, statusCode: number, errors?: ApiErrorDetail[], data?: any) {
+  constructor(message: string, statusCode: number, errors?: ApiErrorDetail[], data?: unknown) {
     super(message);
     this.name = 'ApiError';
     this.statusCode = statusCode;

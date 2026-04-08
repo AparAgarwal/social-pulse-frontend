@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { Modal } from './Modal';
 import { ActiveSessionsList } from './ActiveSessionsList';
 import { getBlockedLoginSessions, revokeBlockedLoginSession } from '../../lib/api/auth';
@@ -19,19 +19,20 @@ export const SessionLimitModal = ({
   onRetry,
 }: SessionLimitModalProps) => {
   // Helper to safely extract array from varying response structures
-  const extractSessions = (data: any): ActiveSession[] => {
+  const extractSessions = useCallback((data: unknown): ActiveSession[] => {
     if (Array.isArray(data)) return data;
-    if (data && Array.isArray(data.activeSessions)) return data.activeSessions;
-    if (data && Array.isArray(data.sessions)) return data.sessions;
+    const d = data as Record<string, unknown>;
+    if (d && Array.isArray(d.activeSessions)) return d.activeSessions as ActiveSession[];
+    if (d && Array.isArray(d.sessions)) return d.sessions as ActiveSession[];
     return [];
-  };
+  }, []);
 
   const [sessions, setSessions] = useState<ActiveSession[]>(() => extractSessions(payload));
   const [isRevoking, setIsRevoking] = useState(false);
   const [revokingSessionId, setRevokingSessionId] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
 
-  const fetchSessions = async () => {
+  const fetchSessions = useCallback(async () => {
     try {
       const data = await getBlockedLoginSessions(payload.sessionManagementToken);
       const updatedSessions = extractSessions(data);
@@ -44,7 +45,7 @@ export const SessionLimitModal = ({
     } catch (err) {
       console.error('Failed to fetch sessions:', err);
     }
-  };
+  }, [payload.sessionManagementToken, payload.maxActiveSessions, extractSessions, onRetry]);
 
   const handleRevoke = async (sessionId: string) => {
     setIsRevoking(true);
@@ -53,18 +54,23 @@ export const SessionLimitModal = ({
     try {
       await revokeBlockedLoginSession(payload.sessionManagementToken, sessionId);
       await fetchSessions();
-    } catch (err: any) {
-      setError(err.message || 'Failed to log out device. Please try again.');
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to log out device. Please try again.');
       setIsRevoking(false);
       setRevokingSessionId(null);
     }
   };
 
   useEffect(() => {
+    let active = true;
     if (isOpen) {
-      fetchSessions();
+      // eslint-disable-next-line react-hooks/set-state-in-effect
+      fetchSessions().then(() => {
+        if (!active) return;
+      });
     }
-  }, [isOpen]);
+    return () => { active = false; };
+  }, [isOpen, fetchSessions]);
 
   return (
     <Modal

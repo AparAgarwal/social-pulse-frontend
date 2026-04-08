@@ -33,7 +33,7 @@ type SectionId = 'profile' | 'account' | 'security' | 'privacy' | 'notifications
 interface MenuItem {
   id: SectionId;
   label: string;
-  icon: any;
+  icon: React.ElementType;
   value?: string;
   isDanger?: boolean;
   onClick?: () => void;
@@ -107,7 +107,7 @@ export function SettingsPage() {
           const updatedUser = await updateProfile({ isPrivate: !isPrivate });
           updateUser(updatedUser);
           toast(`Account is now ${!isPrivate ? 'private' : 'public'}`, 'success');
-        } catch (error) {
+        } catch {
           toast('Failed to update privacy', 'error');
         }
       };
